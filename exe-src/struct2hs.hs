@@ -51,7 +51,7 @@ cToHsType' :: Type -> Maybe String
 cToHsType' (DirectType tn _ _) = cToHsTypeName tn
 cToHsType' (PtrType t _ _) = fmap (\a -> "(Ptr " ++ a ++ ")") $ cToHsType' t
 cToHsType' (FunctionType (FunType rt para _) _) =
-  fmap (\a -> "(FunPtr " ++ a ++ ")") $ fmap ("IO " ++) $ cToHsType' rt
+  fmap (\a -> "(FunPtr (" ++ a ++ "))") $ fmap ("IO " ++) $ cToHsType' rt
 cToHsType' _ = Nothing
 
 showNewType :: String -> String
