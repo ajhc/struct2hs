@@ -48,16 +48,19 @@ showParam :: ParamDecl -> String
 showParam (ParamDecl (VarDecl _ _ t) _)         = cToHsType t
 showParam (AbstractParamDecl (VarDecl _ _ t) _) = cToHsType t
 
+stripFunPtr :: Type -> Maybe String
+stripFunPtr (FunctionType (FunType rt para _) _) =
+  let ret = fmap ("IO " ++) $ cToHsType' rt
+      args = concat $ zipWith (++) (fmap showParam para) $ repeat " -> "
+  in fmap (args ++) $ ret
+
 cToHsType :: Type -> String
 cToHsType t = fromMaybe (show $ pretty t) $ cToHsType' t
 
 cToHsType' :: Type -> Maybe String
 cToHsType' (DirectType tn _ _) = cToHsTypeName tn
 cToHsType' (PtrType t _ _) = fmap (\a -> "(Ptr " ++ a ++ ")") $ cToHsType' t
-cToHsType' (FunctionType (FunType rt para _) _) =
-  let ret = fmap ("IO " ++) $ cToHsType' rt
-      args = concat $ zipWith (++) (fmap showParam para) $ repeat " -> "
-  in fmap (\a -> "(FunPtr (" ++ args ++ a ++ "))") $ ret
+cToHsType' t@(FunctionType _ _) = fmap (\a -> "(FunPtr (" ++ a ++ "))") $ stripFunPtr t
 cToHsType' _ = Nothing
 
 showNewType :: String -> String
