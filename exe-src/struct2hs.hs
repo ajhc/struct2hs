@@ -44,6 +44,10 @@ cToHsTypeName (TyFloating TyLDouble) = Just "CLDouble"
 cToHsTypeName (TyComp (CompTypeRef (NamedRef (Ident name _ _)) StructTag _)) = Just $ cToHsName name
 cToHsTypeName _                      = Nothing
 
+showParam :: ParamDecl -> String
+showParam (ParamDecl (VarDecl _ _ t) _)         = cToHsType t
+showParam (AbstractParamDecl (VarDecl _ _ t) _) = cToHsType t
+
 cToHsType :: Type -> String
 cToHsType t = fromMaybe (show $ pretty t) $ cToHsType' t
 
@@ -51,7 +55,9 @@ cToHsType' :: Type -> Maybe String
 cToHsType' (DirectType tn _ _) = cToHsTypeName tn
 cToHsType' (PtrType t _ _) = fmap (\a -> "(Ptr " ++ a ++ ")") $ cToHsType' t
 cToHsType' (FunctionType (FunType rt para _) _) =
-  fmap (\a -> "(FunPtr (" ++ a ++ "))") $ fmap ("IO " ++) $ cToHsType' rt
+  let ret = fmap ("IO " ++) $ cToHsType' rt
+      args = concat $ zipWith (++) (fmap showParam para) $ repeat " -> "
+  in fmap (\a -> "(FunPtr (" ++ args ++ a ++ "))") $ ret
 cToHsType' _ = Nothing
 
 showNewType :: String -> String
