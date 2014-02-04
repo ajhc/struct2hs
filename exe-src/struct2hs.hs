@@ -48,11 +48,17 @@ showParam :: ParamDecl -> String
 showParam (ParamDecl (VarDecl _ _ t) _)         = cToHsType t
 showParam (AbstractParamDecl (VarDecl _ _ t) _) = cToHsType t
 
+findFunPtr :: Type -> [Type]
+findFunPtr (PtrType t _ _) = findFunPtr t
+findFunPtr t@(FunctionType _ _) = [t]
+findFunPtr _ = []
+
 stripFunPtr :: Type -> Maybe String
 stripFunPtr (FunctionType (FunType rt para _) _) =
   let ret = fmap ("IO " ++) $ cToHsType' rt
       args = concat $ zipWith (++) (fmap showParam para) $ repeat " -> "
   in fmap (args ++) $ ret
+stripFunPtr _ = Nothing
 
 cToHsType :: Type -> String
 cToHsType t = fromMaybe (show $ pretty t) $ cToHsType' t
@@ -67,12 +73,20 @@ showNewType :: String -> String
 showNewType stn = let hsStn = cToHsName stn in
   "newtype {-# CTYPE \"struct " ++ stn ++ "\" #-} " ++ hsStn ++ " = " ++ hsStn ++ " ()"
 
+showffiDynamic :: String -> (String, Type) -> String
+showffiDynamic stn (n, t) =
+  let hsStn = cToHsName stn
+      f s = "\nforeign import ccall \"dynamic\" call_" ++ hsStn ++ "_" ++ n ++ " ::\n" ++
+            "  FunPtr (" ++ s  ++ ") -> " ++ s
+  in concatMap f $ catMaybes $ fmap stripFunPtr $ findFunPtr t
+
 showHsCode :: String -> (String, Type) -> String
 showHsCode stn (n, t) = let hsStn = cToHsName stn in
   "foreign import primitive \"const.offsetof(" ++ "struct " ++ stn ++ ", " ++ n ++
   ")\"\n  offsetOf_" ++ hsStn ++ "_" ++ n ++ " :: Int\n" ++
   "p_" ++ hsStn ++ "_" ++ n ++ " :: Ptr " ++ hsStn ++ " -> IO (Ptr " ++ cToHsType t ++ ")\n" ++
-  "p_" ++ hsStn ++ "_" ++ n ++ " p = return $ plusPtr p offsetOf_" ++ hsStn ++ "_" ++ n
+  "p_" ++ hsStn ++ "_" ++ n ++ " p = return $ plusPtr p offsetOf_" ++ hsStn ++ "_" ++ n ++
+  showffiDynamic stn (n, t)
 
 checkResult :: (Show a) => String -> (Either a b) -> IO b
 checkResult label = either (error . (label++) . show) return
