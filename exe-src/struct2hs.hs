@@ -72,14 +72,14 @@ onlyStruct :: TagDef -> Bool
 onlyStruct (CompDef (CompType _ StructTag _ _ _)) = True
 onlyStruct _ = False
 
-memberNames :: [MemberDecl] -> [(String, Type)]
-memberNames members = mapMaybe go members
+validMembers :: [MemberDecl] -> [(String, Type)]
+validMembers members = mapMaybe go members
   where go (MemberDecl (VarDecl (VarName (Ident name _ _) _) _ t) _ _) = Just (name, t)
         go _                                                           = Nothing
 
 showForeignPrim :: TagDef -> String
 showForeignPrim (CompDef (CompType (NamedRef (Ident name _ _)) StructTag members _ _)) =
-  let ms = memberNames members
+  let ms = validMembers members
   in unlines $ showNewType name : map (showHsCode name) ms
 showForeignPrim td = "*** Not showable struct: " ++ (show . pretty) td
 
