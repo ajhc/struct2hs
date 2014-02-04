@@ -1,5 +1,3 @@
-Moved to https://github.com/ajhc/struct2hs.
-
 # 例: C言語の構造体ツリーを局所的に辿る
 
 Storableクラスを使わずにポインタのpeekだけを使って、
