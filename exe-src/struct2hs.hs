@@ -67,12 +67,17 @@ cToHsType' :: Type -> Maybe String
 cToHsType' (DirectType tn _ _) = cToHsTypeName tn
 cToHsType' (PtrType t _ _) = fmap (\a -> "(Ptr " ++ a ++ ")") $ cToHsType' t
 cToHsType' t@(FunctionType _ _) = fmap (\a -> "(FunPtr (" ++ a ++ "))") $ stripFunPtr t
-cToHsType' (ArrayType t _ _ _) = fmap (\a -> "(Ptr " ++ a ++ ")") $ cToHsType' t
+cToHsType' (ArrayType t _ _ _) = cToHsType' t
 cToHsType' _ = Nothing
 
 showNewType :: String -> String
 showNewType stn = let hsStn = cToHsName stn in
   "newtype {-# CTYPE \"struct " ++ stn ++ "\" #-} " ++ hsStn ++ " = " ++ hsStn ++ " ()"
+
+showSizeOf :: String -> String
+showSizeOf stn = let hsStn = cToHsName stn in
+  "foreign import primitive \"const.sizeof(" ++ "struct " ++ stn ++
+  ")\"\n  sizeOf_" ++ hsStn ++ " :: Int"
 
 showffiDynamic :: String -> (String, Type) -> String
 showffiDynamic stn (n, t) =
@@ -104,7 +109,7 @@ validMembers members = mapMaybe go members
 showForeignPrim :: TagDef -> String
 showForeignPrim (CompDef (CompType (NamedRef (Ident name _ _)) StructTag members _ _)) =
   let ms = validMembers members
-  in unlines $ showNewType name : map (showHsCode name) ms
+  in unlines $ showNewType name : showSizeOf name : map (showHsCode name) ms
 showForeignPrim td = "*** Not showable struct: " ++ (show . pretty) td
 
 main :: IO ()
