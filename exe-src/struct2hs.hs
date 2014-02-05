@@ -87,9 +87,15 @@ showFfiDynamic stn (n, t) =
   in concatMap f $ catMaybes $ fmap stripFunPtr $ findFunPtr t
 
 showAccessor :: String -> (String, Type) -> String
-showAccessor stn (n, t) = let hsStn = cToHsName stn in
-  "p_" ++ hsStn ++ "_" ++ n ++ " :: Ptr " ++ hsStn ++ " -> IO (Ptr " ++ cToHsType t ++ ")\n" ++
-  "p_" ++ hsStn ++ "_" ++ n ++ " p = return $ plusPtr p offsetOf_" ++ hsStn ++ "_" ++ n
+showAccessor stn (n, t) =
+  let hsStn = cToHsName stn
+      isArray (ArrayType t _ _ _) = True
+      isArray _                   = False
+      it = if isArray t then " -> Int" else ""
+      ia = if isArray t then "i "  else ""
+      io = if isArray t then " + i * sizeOf_" ++ (cToHsName $ cToHsType t) else ""
+  in "p_" ++ hsStn ++ "_" ++ n ++ " :: Ptr " ++ hsStn ++ it ++ " -> IO (Ptr " ++ cToHsType t ++ ")\n" ++
+     "p_" ++ hsStn ++ "_" ++ n ++ " p " ++ ia ++ "= return $ plusPtr p $ offsetOf_" ++ hsStn ++ "_" ++ n ++ io
 
 showMember :: String -> (String, Type) -> String
 showMember stn (n, t) = let hsStn = cToHsName stn in
