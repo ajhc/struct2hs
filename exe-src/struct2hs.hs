@@ -79,20 +79,23 @@ showSizeOf stn = let hsStn = cToHsName stn in
   "foreign import primitive \"const.sizeof(" ++ "struct " ++ stn ++
   ")\"\n  sizeOf_" ++ hsStn ++ " :: Int"
 
-showffiDynamic :: String -> (String, Type) -> String
-showffiDynamic stn (n, t) =
+showFfiDynamic :: String -> (String, Type) -> String
+showFfiDynamic stn (n, t) =
   let hsStn = cToHsName stn
       f s = "\nforeign import ccall \"dynamic\" call_" ++ hsStn ++ "_" ++ n ++ " ::\n" ++
             "  FunPtr (" ++ s  ++ ") -> " ++ s
   in concatMap f $ catMaybes $ fmap stripFunPtr $ findFunPtr t
 
-showHsCode :: String -> (String, Type) -> String
-showHsCode stn (n, t) = let hsStn = cToHsName stn in
+showAccessor :: String -> (String, Type) -> String
+showAccessor stn (n, t) = let hsStn = cToHsName stn in
+  "p_" ++ hsStn ++ "_" ++ n ++ " :: Ptr " ++ hsStn ++ " -> IO (Ptr " ++ cToHsType t ++ ")\n" ++
+  "p_" ++ hsStn ++ "_" ++ n ++ " p = return $ plusPtr p offsetOf_" ++ hsStn ++ "_" ++ n
+
+showMember :: String -> (String, Type) -> String
+showMember stn (n, t) = let hsStn = cToHsName stn in
   "foreign import primitive \"const.offsetof(" ++ "struct " ++ stn ++ ", " ++ n ++
   ")\"\n  offsetOf_" ++ hsStn ++ "_" ++ n ++ " :: Int\n" ++
-  "p_" ++ hsStn ++ "_" ++ n ++ " :: Ptr " ++ hsStn ++ " -> IO (Ptr " ++ cToHsType t ++ ")\n" ++
-  "p_" ++ hsStn ++ "_" ++ n ++ " p = return $ plusPtr p offsetOf_" ++ hsStn ++ "_" ++ n ++
-  showffiDynamic stn (n, t)
+  showAccessor stn (n, t) ++ showFfiDynamic stn (n, t)
 
 checkResult :: (Show a) => String -> (Either a b) -> IO b
 checkResult label = either (error . (label++) . show) return
@@ -109,7 +112,7 @@ validMembers members = mapMaybe go members
 showForeignPrim :: TagDef -> String
 showForeignPrim (CompDef (CompType (NamedRef (Ident name _ _)) StructTag members _ _)) =
   let ms = validMembers members
-  in unlines $ showNewType name : showSizeOf name : map (showHsCode name) ms
+  in unlines $ showNewType name : showSizeOf name : map (showMember name) ms
 showForeignPrim td = "*** Not showable struct: " ++ (show . pretty) td
 
 main :: IO ()
