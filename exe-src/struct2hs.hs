@@ -68,6 +68,7 @@ cToHsType' (DirectType tn _ _) = cToHsTypeName tn
 cToHsType' (PtrType t _ _) = fmap (\a -> "(Ptr " ++ a ++ ")") $ cToHsType' t
 cToHsType' t@(FunctionType _ _) = fmap (\a -> "(FunPtr (" ++ a ++ "))") $ stripFunPtr t
 cToHsType' (ArrayType t _ _ _) = cToHsType' t
+-- cToHsType' (TypeDefType _ _ _) = xxx
 cToHsType' _ = Nothing
 
 showNewType :: String -> String
